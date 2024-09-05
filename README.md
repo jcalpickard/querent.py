@@ -28,13 +28,13 @@ Querent.py is part of "Xamota," some research on structured data and inuitive kn
 
 querent-py/  
 ├── src/  
-│ ⠀ └── querent.py  
+│ ⠀⠀⠀ └── querent.py  
 ├── data/  
 ├── docs/  
-│ ⠀ ├── concepts/  
-│ ⠀ ├── development/  
-│ ⠀ ├── research/  
-│ ⠀ └── user_guide/  
+│ ⠀⠀⠀ ├── concepts/  
+│ ⠀⠀⠀ ├── development/  
+│ ⠀⠀⠀ ├── research/  
+│ ⠀⠀⠀ └── user_guide/  
 ├── examples/  
 ├── notebooks/  
 ├── tests/  

@@ -26,21 +26,21 @@ Querent.py is part of "Xamota," some research on structured data and inuitive kn
 
 ## Project structure
 
-querent-py/
-├── src/
-│   └── querent.py
-├── data/
-├── docs/
-│   ├── concepts/
-│   ├── development/
-│   ├── research/
-│   └── user_guide/
-├── examples/
-├── notebooks/
-├── tests/
-├── .gitignore
-├── README.md
-└── requirements.txt
+querent-py/  
+├── src/  
+│   └── querent.py  
+├── data/  
+├── docs/  
+│   ├── concepts/  
+│   ├── development/  
+│   ├── research/  
+│   └── user_guide/  
+├── examples/  
+├── notebooks/  
+├── tests/  
+├── .gitignore  
+├── README.md  
+└── requirements.txt  
 
 - src/: Contains the main Querent.py script
 - data/: Stores essential data files, e.g. card meanings

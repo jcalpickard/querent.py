@@ -4,7 +4,7 @@ Querent.py is an experimental software tool for tarot practice. This Python-base
 
 Querent.py is part of "Xamota," some research on structured data and inuitive knowledge I'm doing with [@timcowlishaw](https://github.com/timcowlishaw), as part of our sprawling mutual-aid Python-for-ethnography skill exchange, "[Enxaneta](https://github.com/timcowlishaw/enxaneta)." While I work on Querent.py, Tim will be developing [Humus](https://github.com/timcowlishaw/humus), a "composting" database that forgets things.
 
-**Key features:**
+## **Key features:**
 
 - Local, single-user deployment supporting situated knowledges and personal practice
 - Emphasis on introspection and exploration over prediction

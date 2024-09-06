@@ -1,8 +1,6 @@
 # Querent.py
 
-Querent.py is an experimental software tool for personal tarot practice. This Python-based system incorporates both pre-populated traditional card meanings and user-generated interpretations, allowing for the evolution of card meanings over time. It requires a physical tarot deck, using card draws as triggers for retrieving and generating information.
-
-Querent.py is part of "Xamota," some research on structured data and inuitive knowledge I'm doing with [@timcowlishaw](https://github.com/timcowlishaw), as part of our sprawling mutual-aid Python-for-ethnography skill exchange, "[Enxaneta](https://github.com/timcowlishaw/enxaneta)." While I work on Querent.py, Tim will be developing [Humus](https://github.com/timcowlishaw/humus), a "composting" database that forgets things.
+Querent.py is an experimental software tool for personal tarot practice, supporting introspection and exploration through card-based reflection. This Python-based system incorporates both pre-populated traditional card meanings and user-generated interpretations, allowing for the evolution of card meanings over time. It requires a physical tarot deck, using card draws as triggers for retrieving and generating information.
 
 ## **Key features:**
 
@@ -48,6 +46,16 @@ querent-py/
 - examples/: Provides usage examples for better understanding (to come)
 - notebooks/: Contains Jupyter notebooks for exploratory analysis (stretch goals)
 - tests/: For unit tests ensuring code reliability (???)
+
+## Project context
+
+Querent.py is part of a broader research initiative, "Xamota," using reflexive software development to explore the intersections of intuitive, embodied knowledge and structured data schemas. This project is being developed in collaboration with [@timcowlishaw](https://github.com/timcowlishaw) as part of our sprawling, collaborative Python-for-ethnography skill exchange, "[Enxaneta](https://github.com/timcowlishaw/enxaneta)." 
+
+**Related projects:**
+
+- [Humus](https://github.com/timcowlishaw/humus): A "composting" database that forgets things, developed by Tim Cowlishaw.
+
+Together, these programmes form a tiny experimental software ecosystem, exploring alternative approaches to data, knowledge, and software development in ethnographic contexts.
 
 ## Contribution
 

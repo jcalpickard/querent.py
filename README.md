@@ -16,7 +16,7 @@ Querent.py is part of "Xamota," some research on structured data and inuitive kn
 ## Theoretical framework
 
 - Ian Bogost's concepts of "philosophical carpentry" and "procedural rhetoric"
-- Alejandro Jodorowky's ideas of the tarot as a "nomadic cathedral" or "portable contemplative device"
+- Alejandro Jodorowky's ideas of the tarot as a "projective instrument", "nomadic cathedral", or "portable contemplative device"
 - Explorations of "ostensive detachment" and "black-boxing" in knowledge practices
 - Critical engagement with the presuppositions of large language models and RAG (retrieval-augmented generation) systems
 

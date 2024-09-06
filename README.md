@@ -55,7 +55,7 @@ Querent.py is part of a broader research initiative, "Xamota," using reflexive s
 
 - [Humus](https://github.com/timcowlishaw/humus): A "composting" database that forgets things, developed by Tim Cowlishaw.
 
-Together, these programmes form a tiny experimental software ecosystem, exploring alternative approaches to data, knowledge, and software development in ethnographic contexts.
+While Querent.py focuses on tarot practice and intuitive knowledge retrieval, Humus explores concepts of information persistence and decay. Together, these programmes form a tiny experimental software ecosystem, exploring alternative approaches to data management, knowledge representation, and software development in ethnographic research contexts.
 
 ## Contribution
 

@@ -119,7 +119,7 @@ class QueryHomeostat:
             state=SystemState.SETTLING,
             variety=Variety(),
             last_response="",
-            hisotry=[],
+            history=[],
             momentum=0.0,
             persistence=0
         )
@@ -386,255 +386,255 @@ class QueryHomeostat:
         return abs((m1['hot'] - m1['cool']) - 
                    (m2['hot'] - m2['cool'])) > 1
 
-class VarietyRegulator:
-    """A more granular approach to variety regulation focused on emergent patterns."""
+# class VarietyRegulator:
+#     """A more granular approach to variety regulation focused on emergent patterns."""
 
-    def __init__(self):
-        self.variety_history = deque(maxlen=5)  # deliberately limited memory
-        self.pattern_cache = {}                 # temporary pattern recognition
-        self.decay_factor = 0.15                # pattern decay reate
+#     def __init__(self):
+#         self.variety_history = deque(maxlen=5)  # deliberately limited memory
+#         self.pattern_cache = {}                 # temporary pattern recognition
+#         self.decay_factor = 0.15                # pattern decay reate
 
-    def assess_pattern(self, variety: Variety) -> Dict:
-        """Assess emergent patterns in variety measures."""
-        # record new variety state
-        self.variety_history.append(variety)
+#     def assess_pattern(self, variety: Variety) -> Dict:
+#         """Assess emergent patterns in variety measures."""
+#         # record new variety state
+#         self.variety_history.append(variety)
 
-        # detect emergent patterns
-        patterns = {
-            'oscillation': self._detect_oscillation(),
-            'convergence': self._detect_convergence(),
-            'divergence': self._detect_divergence()
-        }
+#         # detect emergent patterns
+#         patterns = {
+#             'oscillation': self._detect_oscillation(),
+#             'convergence': self._detect_convergence(),
+#             'divergence': self._detect_divergence()
+#         }
 
-        # apply decay to existing patterns
-        for pattern in self.pattern_cache:
-            self.pattern_cache[pattern] *= (1 - self.decay_factor)
+#         # apply decay to existing patterns
+#         for pattern in self.pattern_cache:
+#             self.pattern_cache[pattern] *= (1 - self.decay_factor)
             
-        # update pattern cache with new observations
-        for pattern, strength in patterns.items():
-            if pattern not in self.pattern_cache:
-                self.pattern_cache[pattern] = strength
-            else:
-                # blend new and existing patterns with decay (???)
-                self.pattern_cache[pattern] = (
-                    self.pattern_cache[pattern] * (1 - self.decay_factor) +
-                    strength * self.decay_factor
-                )
+#         # update pattern cache with new observations
+#         for pattern, strength in patterns.items():
+#             if pattern not in self.pattern_cache:
+#                 self.pattern_cache[pattern] = strength
+#             else:
+#                 # blend new and existing patterns with decay (???)
+#                 self.pattern_cache[pattern] = (
+#                     self.pattern_cache[pattern] * (1 - self.decay_factor) +
+#                     strength * self.decay_factor
+#                 )
                 
-        return self.pattern_cache
+#         return self.pattern_cache
     
-    def _detect_oscillation(self) -> float:
-        """Detect oscillating patterns in variety measures."""
-        if len(self.variety_history) < 3:
-            return 0.0
+#     def _detect_oscillation(self) -> float:
+#         """Detect oscillating patterns in variety measures."""
+#         if len(self.variety_history) < 3:
+#             return 0.0
             
-        # look for alternating increases/decreases
-        changes = []
-        for i in range(1, len(self.variety_history)):
-            prev = self.variety_history[i-1]
-            curr = self.variety_history[i]
+#         # look for alternating increases/decreases
+#         changes = []
+#         for i in range(1, len(self.variety_history)):
+#             prev = self.variety_history[i-1]
+#             curr = self.variety_history[i]
             
-            # calculate normalised change vectors
-            change = {
-                'dispersal': curr.dispersal - prev.dispersal,
-                'intensity': curr.intensity - prev.intensity,
-                'complexity': curr.complexity - prev.complexity
-            }
-            changes.append(change)
+#             # calculate normalised change vectors
+#             change = {
+#                 'dispersal': curr.dispersal - prev.dispersal,
+#                 'intensity': curr.intensity - prev.intensity,
+#                 'complexity': curr.complexity - prev.complexity
+#             }
+#             changes.append(change)
             
-        # check for sign alternation in changes
-        oscillation = 0.0
-        for dim in ['dispersal', 'intensity', 'complexity']:
-            sign_changes = sum(
-                1 for i in range(1, len(changes))
-                if changes[i][dim] * changes[i-1][dim] < 0
-            )
-            oscillation += sign_changes / (len(changes) - 1)
+#         # check for sign alternation in changes
+#         oscillation = 0.0
+#         for dim in ['dispersal', 'intensity', 'complexity']:
+#             sign_changes = sum(
+#                 1 for i in range(1, len(changes))
+#                 if changes[i][dim] * changes[i-1][dim] < 0
+#             )
+#             oscillation += sign_changes / (len(changes) - 1)
             
-        return oscillation / 3  # normalize across dimensions
+#         return oscillation / 3  # normalize across dimensions
 
-    def _detect_convergence(self) -> float:
-        """Detect convergence patterns in variety measures."""
-        if len(self.variety_history) < 3:
-            return 0.0
+#     def _detect_convergence(self) -> float:
+#         """Detect convergence patterns in variety measures."""
+#         if len(self.variety_history) < 3:
+#             return 0.0
             
-        # look for decreasing variance over time
-        variances = []
-        for i in range(1, len(self.variety_history)):
-            prev = self.variety_history[i-1]
-            curr = self.variety_history[i]
+#         # look for decreasing variance over time
+#         variances = []
+#         for i in range(1, len(self.variety_history)):
+#             prev = self.variety_history[i-1]
+#             curr = self.variety_history[i]
             
-            variance = (
-                abs(curr.dispersal - prev.dispersal) +
-                abs(curr.intensity - prev.intensity) +
-                abs(curr.complexity - prev.complexity)
-            ) / 3
-            variances.append(variance)
+#             variance = (
+#                 abs(curr.dispersal - prev.dispersal) +
+#                 abs(curr.intensity - prev.intensity) +
+#                 abs(curr.complexity - prev.complexity)
+#             ) / 3
+#             variances.append(variance)
             
-        if len(variances) < 2:
-            return 0.0
+#         if len(variances) < 2:
+#             return 0.0
             
-        # calculate trend in variances
-        variance_trend = sum(
-            variances[i] - variances[i-1]
-            for i in range(1, len(variances))
-        ) / (len(variances) - 1)
+#         # calculate trend in variances
+#         variance_trend = sum(
+#             variances[i] - variances[i-1]
+#             for i in range(1, len(variances))
+#         ) / (len(variances) - 1)
         
-        # normalise and invert so convergence is positive (???)
-        return max(0.0, min(1.0, -variance_trend + 0.5))
+#         # normalise and invert so convergence is positive (???)
+#         return max(0.0, min(1.0, -variance_trend + 0.5))
         
-    def _detect_divergence(self) -> float:
-        """Detect divergence patterns in variety measures."""
-        if len(self.variety_history) < 3:
-            return 0.0
+#     def _detect_divergence(self) -> float:
+#         """Detect divergence patterns in variety measures."""
+#         if len(self.variety_history) < 3:
+#             return 0.0
             
-        # Look for increasing differences between dimensions
-        spreads = []
-        for state in self.variety_history:
-            measures = [state.dispersal, state.intensity, state.complexity]
-            spread = max(measures) - min(measures)
-            spreads.append(spread)
+#         # Look for increasing differences between dimensions
+#         spreads = []
+#         for state in self.variety_history:
+#             measures = [state.dispersal, state.intensity, state.complexity]
+#             spread = max(measures) - min(measures)
+#             spreads.append(spread)
             
-        if len(spreads) < 2:
-            return 0.0
+#         if len(spreads) < 2:
+#             return 0.0
             
-        # Calculate trend in dimensional spread
-        spread_trend = sum(
-            spreads[i] - spreads[i-1]
-            for i in range(1, len(spreads))
-        ) / (len(spreads) - 1)
+#         # Calculate trend in dimensional spread
+#         spread_trend = sum(
+#             spreads[i] - spreads[i-1]
+#             for i in range(1, len(spreads))
+#         ) / (len(spreads) - 1)
         
-        return max(0.0, min(1.0, spread_trend))
+#         return max(0.0, min(1.0, spread_trend))
 
-    def suggest_regulation(self, patterns: dict) -> tuple[float, float, float]:
-        """Suggest regulatory adjustments based on detected patterns."""
-        # base regulation on pattern strengths
-        oscillation = patterns.get('oscillation', 0.0)
-        convergence = patterns.get('convergence', 0.0)
-        divergence = patterns.get('divergence', 0.0)
+#     def suggest_regulation(self, patterns: dict) -> tuple[float, float, float]:
+#         """Suggest regulatory adjustments based on detected patterns."""
+#         # base regulation on pattern strengths
+#         oscillation = patterns.get('oscillation', 0.0)
+#         convergence = patterns.get('convergence', 0.0)
+#         divergence = patterns.get('divergence', 0.0)
         
-        # calculate suggested adjustments
-        dispersal_adj = -0.2 * oscillation + 0.1 * convergence - 0.1 * divergence
-        intensity_adj = -0.1 * oscillation - 0.2 * divergence + 0.1 * convergence
-        complexity_adj = 0.1 * convergence - 0.1 * oscillation - 0.1 * divergence
+#         # calculate suggested adjustments
+#         dispersal_adj = -0.2 * oscillation + 0.1 * convergence - 0.1 * divergence
+#         intensity_adj = -0.1 * oscillation - 0.2 * divergence + 0.1 * convergence
+#         complexity_adj = 0.1 * convergence - 0.1 * oscillation - 0.1 * divergence
         
-        return (dispersal_adj, intensity_adj, complexity_adj)
+#         return (dispersal_adj, intensity_adj, complexity_adj)
 
-    def regulate_variety(self, variety: Variety) -> SystemState:
-        """Determine appropriate state based on variety measures."""
-        # update conversational history
-        self.environment.history.append(
-            (variety.dispersal + variety.intensity + variety.complexity) / 3
-        )
-        if len(self.environment.history) > 5:
-            self.environment.history.pop(0)
+#     def regulate_variety(self, variety: Variety) -> SystemState:
+#         """Determine appropriate state based on variety measures."""
+#         # update conversational history
+#         self.environment.history.append(
+#             (variety.dispersal + variety.intensity + variety.complexity) / 3
+#         )
+#         if len(self.environment.history) > 5:
+#             self.environment.history.pop(0)
 
-        # calculate momentum (rate of change in variety)
-        self.environment.momentum = self._calculate_momentum()
+#         # calculate momentum (rate of change in variety)
+#         self.environment.momentum = self._calculate_momentum()
 
-        # determine persistence in the current state
-        if self.environment.state == self.regulate_variety(variety):
-            self.environment.persistence += 1
-        else:
-            self.environment.persistence = 0
+#         # determine persistence in the current state
+#         if self.environment.state == self.regulate_variety(variety):
+#             self.environment.persistence += 1
+#         else:
+#             self.environment.persistence = 0
 
-        # use variety, momentum, and persistence to determine new state
-        if self.environment.persistence > 3 and self.environment.momentum < 0.1:
-            return SystemState.CONTAINING
-        elif variety.dispersal > 0.7:
-            return SystemState.DWELLING
-        elif variety.complexity > 0.7:
-            return SystemState.CONTAINING
-        elif variety.complexity < 0.2:
-            return SystemState.EXPANDING
-        else:
-            return SystemState.EMERGING
+#         # use variety, momentum, and persistence to determine new state
+#         if self.environment.persistence > 3 and self.environment.momentum < 0.1:
+#             return SystemState.CONTAINING
+#         elif variety.dispersal > 0.7:
+#             return SystemState.DWELLING
+#         elif variety.complexity > 0.7:
+#             return SystemState.CONTAINING
+#         elif variety.complexity < 0.2:
+#             return SystemState.EXPANDING
+#         else:
+#             return SystemState.EMERGING
 
-    def _calculate_momentum(self) -> float:
-        """Calculate the rate of change in overall variety."""
-        if len(self.environment.history) > 1:
-            return (self.environment.history[-1] - self.environment.history[-2]) / 2
-        else:
-            return 0.0
+#     def _calculate_momentum(self) -> float:
+#         """Calculate the rate of change in overall variety."""
+#         if len(self.environment.history) > 1:
+#             return (self.environment.history[-1] - self.environment.history[-2]) / 2
+#         else:
+#             return 0.0
 
-    def generate_response(self, input_text: str) -> str:
-        """Generate response based on input and current environment."""
-        # assess and regulate variety
-        variety = self.assess_variety(input_text)
-        new_state = self.regulate_variety(variety)
+#     def generate_response(self, input_text: str) -> str:
+#         """Generate response based on input and current environment."""
+#         # assess and regulate variety
+#         variety = self.assess_variety(input_text)
+#         new_state = self.regulate_variety(variety)
         
-        # update environment
-        self.environment.variety = variety
-        self.environment.state = new_state
+#         # update environment
+#         self.environment.variety = variety
+#         self.environment.state = new_state
         
-        # select response pattern based on state
-        if new_state == SystemState.CONTAINING:
-            response = self.containing_response(input_text)
-        elif new_state == SystemState.EXPANDING:
-            response = self.expanding_response()
-        elif new_state == SystemState.DWELLING:
-            response = self.dwelling_response(input_text)
-        elif new_state == SystemState.EMERGING:
-            response = self.emerging_response()
-        else:  # SETTLING
-            response = self.settling_response()
+#         # select response pattern based on state
+#         if new_state == SystemState.CONTAINING:
+#             response = self.containing_response(input_text)
+#         elif new_state == SystemState.EXPANDING:
+#             response = self.expanding_response()
+#         elif new_state == SystemState.DWELLING:
+#             response = self.dwelling_response(input_text)
+#         elif new_state == SystemState.EMERGING:
+#             response = self.emerging_response()
+#         else:  # SETTLING
+#             response = self.settling_response()
             
-        self.environment.last_response = response
-        return response
+#         self.environment.last_response = response
+#         return response
 
-    def apply_timing(self, text: str) -> str:
-        """Apply timing pattern to response."""
-        return f"{text}\n{self.pause_patterns[self.environment.pause_level - 1]}"
+#     def apply_timing(self, text: str) -> str:
+#         """Apply timing pattern to response."""
+#         return f"{text}\n{self.pause_patterns[self.environment.pause_level - 1]}"
     
-    def apply_depth(self, text: str) -> str:
-        """Apply spatial/depth pattern to response."""
-        return self.depth_patterns[self.environment.depth_level - 1].format(text)
+#     def apply_depth(self, text: str) -> str:
+#         """Apply spatial/depth pattern to response."""
+#         return self.depth_patterns[self.environment.depth_level - 1].format(text)
     
-    def containing_response(self, input_text: str) -> str:
-        """Generate containing response for high variety."""
-        # extract key phrases for reflection
-        words = input_text.split()
-        if len(words) > 5:
-            key_phrase = " ".join(words[:5]) + "..."
-        else:
-            key_phrase = input_text
+#     def containing_response(self, input_text: str) -> str:
+#         """Generate containing response for high variety."""
+#         # extract key phrases for reflection
+#         words = input_text.split()
+#         if len(words) > 5:
+#             key_phrase = " ".join(words[:5]) + "..."
+#         else:
+#             key_phrase = input_text
 
-        response = self.containing_patterns[self.environment.depth_level - 1].format(key_phrase)
-        return self.apply_timing(response)
+#         response = self.containing_patterns[self.environment.depth_level - 1].format(key_phrase)
+#         return self.apply_timing(response)
     
-    def expanding_response(self) -> str:
-        """Generate response to encourage expansion."""
-        prompts = [
-            "What else is present?",
-            "Where else does your attention move?",
-            "What other aspects feel alive?",
-            "What remains unspoken?",
-            "What other threads emerge?"
-        ]
-        return self.apply_timing(prompts[self.environment.depth_level - 1])
+#     def expanding_response(self) -> str:
+#         """Generate response to encourage expansion."""
+#         prompts = [
+#             "What else is present?",
+#             "Where else does your attention move?",
+#             "What other aspects feel alive?",
+#             "What remains unspoken?",
+#             "What other threads emerge?"
+#         ]
+#         return self.apply_timing(prompts[self.environment.depth_level - 1])
 
-    def dwelling_response(self, input_text: str) -> str:
-        """Generate response for dwelling with content."""
-        words = input_text.split()
-        if words:
-            focus_word = words[len(words)//2]  # choose middle word as focus
-            return self.apply_timing(self.apply_depth(f"staying with: {focus_word}"))
-        return self.apply_timing("staying with what's present")
+#     def dwelling_response(self, input_text: str) -> str:
+#         """Generate response for dwelling with content."""
+#         words = input_text.split()
+#         if words:
+#             focus_word = words[len(words)//2]  # choose middle word as focus
+#             return self.apply_timing(self.apply_depth(f"staying with: {focus_word}"))
+#         return self.apply_timing("staying with what's present")
 
-    def emerging_response(self) -> str:
-        """Generate response for query emergence."""
-        prompts = [
-            "What question begins to form?",
-            "How might this question want to be asked?",
-            "What shape does this query take?",
-            "How does this question hold your situation?",
-            "What query emerges from this exploration?"
-        ]
-        return self.apply_timing(prompts[self.environment.depth_level - 1])
+#     def emerging_response(self) -> str:
+#         """Generate response for query emergence."""
+#         prompts = [
+#             "What question begins to form?",
+#             "How might this question want to be asked?",
+#             "What shape does this query take?",
+#             "How does this question hold your situation?",
+#             "What query emerges from this exploration?"
+#         ]
+#         return self.apply_timing(prompts[self.environment.depth_level - 1])
     
-    def settling_response(self) -> str:
-        """Generate initial settling response."""
-        return self.apply_timing("Take a moment to settle into this space")
+#     def settling_response(self) -> str:
+#         """Generate initial settling response."""
+#         return self.apply_timing("Take a moment to settle into this space")
 
 def demonstrate_usage():
     """Demonstrate system usage with example interaction."""

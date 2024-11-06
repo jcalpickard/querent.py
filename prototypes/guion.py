@@ -19,6 +19,18 @@ class Session:
     result : [Card]
     interpretations : [str]
 
+class QueryHomeostat:
+    """A thing that's responsible for the 'query refinement' process -
+    deciding if a query is sufficiently 'refined' and producing prompts for further elicitation"""
+    def is_balanced(query : str) -> bool:
+        """Evalute if the query is 'good enough' to proceed:"""
+        return ???
+
+    def prompt_for_refinement(query) -> str:
+        """Get a prompt to give to the user to refine the query"""
+        return ???
+
+
 class QuerentHumusClient:
     """A thing that's responsible for indexing everything in humus so that we can get it back in ways that are useful"""
     def save_session(session : Session):
@@ -35,7 +47,12 @@ def welcome_scene():
 
 def homeostat_scene():
     """Here we do the 'query elicitation' and refinement"""
-    query = ???
+    homeostat = QueryHomeostat()
+    query = ??? #get the initial formulation of the query from the user.
+    while !homeostat.is_balanced(query):
+        prompt = homeostat.prompt_for_refinement(query)
+        ??? ### Show prompt to user
+        query = ??? #Get reformulated query back from user
     return query
 
 

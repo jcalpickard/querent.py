@@ -141,12 +141,12 @@ class QueryHomeostat:
     def is_stable(self, queries : [str]) -> bool:
         """Evalute if the query is 'good enough' to proceed:"""
         # TODO Justin here is a place to add homeostat logic
-        return len(queries) > 0; # We need at least one query attempt, at least to start with
+        return random.random() > 0.5 # A coin toss, for now
 
     def prompt_for_refinement(self, queries : [str]) -> str:
         """Get a prompt to give to the user to refine the query"""  # or "regulate variety"
-        # TODO Justin here is a place to add homeostat logic
-        fancy_print("aaaah, yes, but have you considered....?", font="tiny")
+        # TODO Justin here is a place to add homeostat logic. return a clarifying question.
+        return "aaaah, yes, but have you considered asking that in another way....?"
 
 def welcome_scene():
     """Here we do the scene setting"""
@@ -157,9 +157,11 @@ def homeostat_scene():
     """Here we do the 'query elicitation' and refinement"""
     homeostat = QueryHomeostat()
     queries = []
+    fancy_print("What is your query, querent?", font="vip")
+    queries.append(fancy_input("query> "))
     while not homeostat.is_stable(queries):
         prompt = homeostat.prompt_for_refinement(queries)
-        fancy_print("What is your query, querent?", font="vip")
+        fancy_print(prompt, font="tiny")
         queries.append(fancy_input("query> "))
     # TODO: The user explicitly consents to continue with the current formulation.
     # What happens if they say no? (Start from scratch? continue refining? Edit?)

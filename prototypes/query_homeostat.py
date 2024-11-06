@@ -1,7 +1,7 @@
-from typer import Typer
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Tuple
+from typing import Any, List, Optional, Callable, Dict, Tuple
 from collections import deque
+import typer
 import random
 import re
 import time
@@ -22,6 +22,11 @@ from enum import Enum
 # trying to balance the need for an accomodating, responsive onboarding
 # with the goal of cultivating/calibrating querent-user engagement
 
+class SessionState(Enum):
+    ACTIVE = "active"
+    COMPLETE = "complete"
+    ERROR = "error"
+
 class SystemState(Enum):
 # specific states might need more work
     SETTLING = "settling"        # initial state, establishing presence
@@ -32,6 +37,12 @@ class SystemState(Enum):
 
 # when the system reaches/stays within `EMERGING` state
 # for a number of interaction loops, it then activates the input module?
+
+@dataclass
+class DialogueRhythm:
+    base_pause: float = 0.8         # base pause between exchanges
+    thinking_pause: float = 0.3     # micro-pause for "thinking"
+    char_rate: float = 0.02         # seconds per character for gradual text display
 
 @dataclass
 class Variety:
@@ -63,6 +74,24 @@ class Variety:
 # they will also modulate the "texture" of the transition to card input
 
 @dataclass
+class StateTransition:
+    # enables clear documentation of valid transitions, runtime validation
+    # makes the boundaries/thresholds more visible, including to querents
+    # and is a hanger for transition markers, rhythmic variation, typographic noodling, etc.
+    from_state: SystemState
+    to_state: SystemState
+    threshold: float
+    condition: Callable[[Variety], bool]
+    ritual_marker: Optional[str] = None
+
+@dataclass
+class VarietyThreshold:
+    measure: str            # 'dispersal', 'intensity', 'complexity'
+    value: float
+    direction: str          # 'above', 'below'
+    weight: float = 1.0
+
+@dataclass
 class Session:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     start_time: float = field(default_factory=time.time)
@@ -85,31 +114,118 @@ class SessionTrace:
     """Capture phenomenological evolution of interaction."""
     # a lightweight way to track the "shape" of interactions
     # while preserving privacy and a sense of transience
+    # "brb gaffer-taping some lambdas to our deque"
     variety_trajectory: List[Variety]
     state_transitions: List[Tuple[SystemState, float]]  # state and timestamp
     momentum_shifts: List[float]
-    closure_window: deque  # sliding window of final interactions
     
+    # [!] TODO need to faff about with calibrating these patterns
+    def __init__(self, window_size: int = 5):
+        self.closure_window = deque(maxlen=window_size) # sliding window of interactions
+        self.pattern_detectors = {
+            'intensity_shift': lambda v1, v2: abs(v1.intensity - v2.intensity) > 0.3,
+            'complexity_peak': lambda v: v.complexity > 0.7,
+            'settling_pattern': lambda vs: all(v.dispersal < 0.4 for v in vs[-3:])
+        }
+
     def capture_moment(self, variety: Variety, state: SystemState):
-        """Record significant state changes and variety measures."""
-        self.variety_trajectory.append(variety)
+        """Motion capture (after a fashion) for meaning-making."""
+        self.closure_window.append((variety, state, time.time()))
+
         if len(self.variety_trajectory) > self.window_size:
-            self.variety_trajectory.pop(0)
+            recent_varieties = [v for v, _, _ in self.closure_window]
+            patterns = {
+                name: detector(recent_varieties) 
+                for name, detector in self.pattern_detectors.items()
+            }
+
+            # detect emergent phenomena
+            # this implementation is _extremely shonky_, but
+            if patterns['settling pattern']:
+                return 'READY_FOR_QUERY'
+
+@dataclass
+class TransitionTrace:
+    """Lightweight record of system-querent dialogue thresholds."""
+    timestamp: float
+    from_state: SystemState
+    to_state: SystemState
+    variety_snapshot: Variety
+    
+    def as_fingerprint(self) -> str:
+        """Generate transition signature."""
+        return f"{self.from_state.value}→{self.to_state.value}:{hash(self.variety_snapshot)}"
 
 @dataclass
 class Environment:
     """Current conditions of the meaning-making space."""
-    state: SystemState
-    variety: Variety
-    last_response: str
-    pause_level: int = 1      # Current temporal pacing (1-5)
-    depth_level: int = 1      # Current depth of engagement (1-5)
-    history: List[float] = field(default_factory=list) #variety history
-    momentum: float = 0.0  # rate of change
-    persistence: int = 0   # duration in current state
+    state: SystemState = field(default=SystemState.SETTLING)
+    variety: Variety = field(default_factory=Variety)
+    last_response: str = ""
 
-    # [?] does temporal tracking inhere to the environment class,
-    # rather than the variety assessment mechanisms?
+    # scalar measures
+    pause_level: int = 1                                # current temporal pacing (1-5)
+    depth_level: int = 1                                # current depth of engagement (1-5)
+
+    # minimal state tracking
+    history: deque = field(default_factory=lambda: deque(maxlen=5))
+    momentum: float = 0.0                               # track rate of change in variety
+    persistence: int = 0                                # track duration in current state
+
+    def update(self, variety: Variety, new_state: SystemState) -> None:
+        """Record new state and update environment measures."""
+        # update momentum based on variety change
+        prev_variety = self.history[-1] if self.history else variety
+        self.momentum = self._calculate_momentum(variety, prev_variety)
+        
+        # update persistence
+        # [?] which is, what, a counter?
+        if new_state == self.state:
+            self.persistence += 1
+        else:
+            self.persistence = 0
+            
+        # update core state
+        self.history.append(variety)        # store entire variety object
+        self.state = new_state
+        self._adjust_levels(variety)
+
+    def _calculate_momentum(self, current: Variety, previous: Variety) -> float:
+        """Calculate rate of change in overall variety."""
+        if not isinstance(current, Variety) or not isinstance(previous, Variety):
+            return 0.0  # return default value if types are incorrect
+        
+        current_val = (current.dispersal + current.intensity + current.complexity) / 3
+        prev_val = (previous.dispersal + previous.intensity + previous.complexity) / 3
+        return current_val - prev_val
+
+    def _adjust_levels(self, variety: Variety) -> None:
+        """Adjust environment levels based on variety measures."""
+        # temporal pacing follows intensity
+        self.pause_level = max(1, min(5, int(variety.intensity * 5) + 1))
+        
+        # depth follows complexity
+        self.depth_level = max(1, min(5, int(variety.complexity * 5) + 1))
+
+@dataclass
+class SimplePatternTrace:
+    """Lightweight trace of interaction patterns."""
+    window_size: int = 3
+    variety_window: deque = field(default_factory=lambda: deque(maxlen=3))
+    
+    def detect_basic_pattern(self, variety: Variety) -> Optional[str]:
+        """Detect fundamental patterns without complex calculations."""
+        self.variety_window.append(variety)
+        if len(self.variety_window) < self.window_size:
+            return None
+            
+        # simple convergence check
+        latest_values = [sum([v.dispersal, v.intensity, v.complexity])/3 
+                        for v in self.variety_window]
+        if all(abs(latest_values[i] - latest_values[i-1]) < 0.1 
+               for i in range(1, len(latest_values))):
+            return "settling"
+        return None
 
 class QueryHomeostat:
     """A homeostat for maintaining conditions conducive to query formation."""
@@ -119,9 +235,9 @@ class QueryHomeostat:
             state=SystemState.SETTLING,
             variety=Variety(),
             last_response="",
-            history=[],
-            momentum=0.0,
-            persistence=0
+            history=deque(maxlen=5), # keeping only recent history
+            momentum = 0.0,
+            persistence = 0
         )
 
         # pattern libraries; explicitly visible as part of ritual form (mandala-style)
@@ -149,13 +265,31 @@ class QueryHomeostat:
             "        {}"
         ]
 
-#        self.temporal_patterns = {
-#            # need to integrate this, but
-#            "dawn": "~~~~~ The sun rises ~~~~",
-#            "dusk": "~~~~~ Shadows lengthen ~~~~",
-#            "night": "~~~~~ Stars wheel overhead ~~~~",
-#            "threshold": "~~~~~ Between times ~~~~"
-#        }
+    def settling_response(self) -> str:
+        """Generate initial settling response."""
+        return self.apply_timing("Take a moment to settle into this space")
+    
+    def apply_timing(self, text: str) -> str:
+        """Apply timing pattern to response."""
+        return f"{text}\n{self.pause_patterns[self.environment.pause_level - 1]}"
+
+    def generate_response(self, input_text: str) -> str:
+        """Generate response based on input and current environment."""
+        try:
+            # assess and regulate variety
+            variety = self.assess_variety(input_text)
+            new_state = self.regulate_variety(variety)
+
+            # update environment
+            self.environment.update(variety, new_state)
+
+            # generate state-specific response
+            response = self._get_state_response(input_text, SystemState)
+            self.environment.last_response = response
+
+            return response
+        except Exception as e:
+            raise HomeostatError(f"Response generation failed: {str(e)}")
 
     def assess_variety(self, input_text: str) -> Variety:
         """Measure input variety through simple pattern matching."""
@@ -179,7 +313,6 @@ class QueryHomeostat:
         # more about pattern than content; fluctuations in the flow of language
         # not "messiness"; structural rhythm and its interruptions
         # irregular patterns indicate scattered attention or thought processes
-        # return a normalised dispersal value between 0 and 1
 
         metrics = {}
     
@@ -209,7 +342,7 @@ class QueryHomeostat:
         # 4. syntactic/structural breaks
         breaks = len(re.findall(r'\n|(?<=[.!?])\s+(?=[A-Z])', text)) / len(text)
 
-        # combined weighting prioritising rhythm and flow
+        # combined weighting prioritising rhythm and flow; return a normalised dispersal value between 0 and 1
         dispersal = (
             0.5 * metrics['rhythmic_scatter'] +     # primary rhythm measure
             0.3 * disruption_markers +              # secondary flow measure
@@ -224,10 +357,28 @@ class QueryHomeostat:
         # the force or pressure behind expression
         # shifts in emotion, tone, or energy
         # from tightly wound containment to explosive release
-        # return a normalised intensity value between 0 and 1
 
         if not text.strip():
             return 0.0
+
+        def _detect_intensity_shift(self, sent1: str, sent2: str) -> bool:
+            """Detect significant shifts in intensity between sentences."""
+            # a helper function for intensity assessment
+            # [?] are 'hot_markers' and 'cool_markers' undefined attributes?
+            def get_intensity_markers(text:str) -> dict:
+                return {
+                    'hot': sum(1 for pattern in self.hot_markers 
+                              if re.search(pattern, text.lower())),
+                    'cool': sum(1 for pattern in self.cool_markers 
+                              if re.search(pattern, text.lower()))
+                }
+        
+            m1 = get_intensity_markers(sent1)
+            m2 = get_intensity_markers(sent2)
+
+            # compare intensity profiles
+            return abs((m1['hot'] - m1['cool']) - 
+                       (m2['hot'] - m2['cool'])) > 1
 
         metrics = {}
         text_len = max(len(text.split()), 1)  # avoid division by zero
@@ -280,7 +431,7 @@ class QueryHomeostat:
         else:
             metrics['shifts'] = 0.0
 
-        # combined weighting
+        # combined weighting; return a normalised intensity value between 0 and 1
         intensity = (
             0.35 * metrics['pressure'] +    # primary structural tension
             0.30 * metrics['embodied'] +    # somatic anchoring
@@ -295,7 +446,6 @@ class QueryHomeostat:
         # core focus: conceptual density, cognitive mapping
         # how ideas nest and relate to each other
         # revealed through patterns of conceptual and temporal connection
-        # return a normalised complexity value between 0 and 1
         
         if not text.strip():
             return 0.0
@@ -317,11 +467,13 @@ class QueryHomeostat:
         ) / text_len
 
         # 2. conceptual movement
-        metrics['movement'] = {
+        movement_patterns = {
             'scale': len(re.findall(r'\b(part|whole|specific|general)\b', text.lower())),
             'time': len(re.findall(r'\b(now|then|before|after|while|during)\b', text.lower())),
             'space': len(re.findall(r'\b(here|there|between|across)\b', text.lower()))
         }
+
+        movement_score = sum(movement_patterns.values())
 
         # 3. perspectival shifts
         metrics['shifts'] = {
@@ -347,294 +499,157 @@ class QueryHomeostat:
             'direct': len(re.findall(r'\b(this|that|these|those)\b', text.lower())),
             'self': len(re.findall(r'\b(itself|own|self)\b', text.lower())),
             'meta': len(re.findall(r'\b(think|consider|understand|question)\b', text.lower())),
-            'nested': len(re.finall(r'\b(within|inside|containing|embedded)\b', text.lower())),
+            'nested': len(re.findall(r'\b(within|inside|containing|embedded)\b', text.lower())),
             'recurring': len(re.findall(r'\b(again|back|return|cycle|recur|echo)\b', text.lower()))
         }
 
-        # combined weighting
-        complexity = (
-            0.30 * metrics['connections'] +                         # primary relational structure
-            0.25 * sum(metrics['shifts'].values()) / text_len +     # perspective shifts
-            0.25 * metrics['abstraction'] +                         # abstractions and concepts
-            0.10 * metrics['movement'] +                            # conceptual movement across scales
-            0.10 * sum(metrics['recursion'].values()) / text_len    # self-reference
-        )
+        try:
+            # combined weighting; return a normalised complexity value between 0 and 1
+            complexity = (
+                0.30 * metrics['connections'] +                         # primary relational structure
+                0.25 * sum(metrics['shifts'].values()) / text_len +     # perspective shifts
+                0.25 * metrics['abstraction'] +                         # abstractions and concepts
+                0.10 * movement_score +                                 # conceptual movement across scales
+                0.10 * sum(metrics['recursion'].values()) / text_len    # self-reference
+            )
 
-        return min(max(complexity * 2.5, 0.0), 1.0)
+            return min(max(complexity * 2.5, 0.0), 1.0)
+        except Exception as e:
+            raise VarietyAssessmentError(f"Error calculating complexity: {str(e)}")
 
-        # abstract language, connections, uncertainty, paradox, recursion
-        # conceptual and temporal layering, abstractions, analogies
-        # tense and perspective shifts, scalar change, qualifiers, time markers
-        # bracketing, tangential or associative connections
-        # expression of uncertainty, openness, perspective-taking
-
-    def _detect_intensity_shift(self, sent1: str, sent2: str) -> bool:
-        """Detect significant shifts in intensity between sentences."""
-        # a helper function for intensity assessment
-        def get_intensity_markers(text:str) -> dict:
-            return {
-                'hot': sum(1 for pattern in self.hot_markers 
-                          if re.search(pattern, text.lower())),
-                'cool': sum(1 for pattern in self.cool_markers 
-                          if re.search(pattern, text.lower()))
-            }
-        
-        m1 = get_intensity_markers(sent1)
-        m2 = get_intensity_markers(sent2)
-
-        # compare intensity profiles
-        return abs((m1['hot'] - m1['cool']) - 
-                   (m2['hot'] - m2['cool'])) > 1
-
-# class VarietyRegulator:
-#     """A more granular approach to variety regulation focused on emergent patterns."""
-
-#     def __init__(self):
-#         self.variety_history = deque(maxlen=5)  # deliberately limited memory
-#         self.pattern_cache = {}                 # temporary pattern recognition
-#         self.decay_factor = 0.15                # pattern decay reate
-
-#     def assess_pattern(self, variety: Variety) -> Dict:
-#         """Assess emergent patterns in variety measures."""
-#         # record new variety state
-#         self.variety_history.append(variety)
-
-#         # detect emergent patterns
-#         patterns = {
-#             'oscillation': self._detect_oscillation(),
-#             'convergence': self._detect_convergence(),
-#             'divergence': self._detect_divergence()
-#         }
-
-#         # apply decay to existing patterns
-#         for pattern in self.pattern_cache:
-#             self.pattern_cache[pattern] *= (1 - self.decay_factor)
-            
-#         # update pattern cache with new observations
-#         for pattern, strength in patterns.items():
-#             if pattern not in self.pattern_cache:
-#                 self.pattern_cache[pattern] = strength
-#             else:
-#                 # blend new and existing patterns with decay (???)
-#                 self.pattern_cache[pattern] = (
-#                     self.pattern_cache[pattern] * (1 - self.decay_factor) +
-#                     strength * self.decay_factor
-#                 )
-                
-#         return self.pattern_cache
+    def regulate_variety(self, variety: Variety) -> SystemState:
+        """Determine appropriate system state based on variety measures."""
+        # calculate overall variety level
+        total_variety = (variety.dispersal + variety.intensity + variety.complexity) / 3.0
     
-#     def _detect_oscillation(self) -> float:
-#         """Detect oscillating patterns in variety measures."""
-#         if len(self.variety_history) < 3:
-#             return 0.0
-            
-#         # look for alternating increases/decreases
-#         changes = []
-#         for i in range(1, len(self.variety_history)):
-#             prev = self.variety_history[i-1]
-#             curr = self.variety_history[i]
-            
-#             # calculate normalised change vectors
-#             change = {
-#                 'dispersal': curr.dispersal - prev.dispersal,
-#                 'intensity': curr.intensity - prev.intensity,
-#                 'complexity': curr.complexity - prev.complexity
-#             }
-#             changes.append(change)
-            
-#         # check for sign alternation in changes
-#         oscillation = 0.0
-#         for dim in ['dispersal', 'intensity', 'complexity']:
-#             sign_changes = sum(
-#                 1 for i in range(1, len(changes))
-#                 if changes[i][dim] * changes[i-1][dim] < 0
-#             )
-#             oscillation += sign_changes / (len(changes) - 1)
-            
-#         return oscillation / 3  # normalize across dimensions
+        # minimal state tracking
+        # will update environment history if needed
+        # this version maintains a small history buffer while 
+        # keeping the core logic simple and deterministic
+        # [!] TODO look at this and work it through
+        if hasattr(self.environment, 'history'):
+            self.environment.history.append(variety)    # store variety object
+            if len(self.environment.history) > 5:
+                self.environment.history.popleft()      # [?] using popleft() for deque; WHY?
 
-#     def _detect_convergence(self) -> float:
-#         """Detect convergence patterns in variety measures."""
-#         if len(self.variety_history) < 3:
-#             return 0.0
-            
-#         # look for decreasing variance over time
-#         variances = []
-#         for i in range(1, len(self.variety_history)):
-#             prev = self.variety_history[i-1]
-#             curr = self.variety_history[i]
-            
-#             variance = (
-#                 abs(curr.dispersal - prev.dispersal) +
-#                 abs(curr.intensity - prev.intensity) +
-#                 abs(curr.complexity - prev.complexity)
-#             ) / 3
-#             variances.append(variance)
-            
-#         if len(variances) < 2:
-#             return 0.0
-            
-#         # calculate trend in variances
-#         variance_trend = sum(
-#             variances[i] - variances[i-1]
-#             for i in range(1, len(variances))
-#         ) / (len(variances) - 1)
-        
-#         # normalise and invert so convergence is positive (???)
-#         return max(0.0, min(1.0, -variance_trend + 0.5))
-        
-#     def _detect_divergence(self) -> float:
-#         """Detect divergence patterns in variety measures."""
-#         if len(self.variety_history) < 3:
-#             return 0.0
-            
-#         # Look for increasing differences between dimensions
-#         spreads = []
-#         for state in self.variety_history:
-#             measures = [state.dispersal, state.intensity, state.complexity]
-#             spread = max(measures) - min(measures)
-#             spreads.append(spread)
-            
-#         if len(spreads) < 2:
-#             return 0.0
-            
-#         # Calculate trend in dimensional spread
-#         spread_trend = sum(
-#             spreads[i] - spreads[i-1]
-#             for i in range(1, len(spreads))
-#         ) / (len(spreads) - 1)
-        
-#         return max(0.0, min(1.0, spread_trend))
+        # simple state transition rules based on dominant variety measure
+        # this can get more subtle later, if helpful, but at the cost of smallness
+        if total_variety > 0.8:
+            return SystemState.CONTAINING
+        elif variety.dispersal > 0.6:
+            return SystemState.DWELLING
+        elif variety.complexity > 0.6:
+            return SystemState.CONTAINING
+        elif total_variety < 0.3:
+            return SystemState.EXPANDING
+        else:
+            return SystemState.EMERGING
 
-#     def suggest_regulation(self, patterns: dict) -> tuple[float, float, float]:
-#         """Suggest regulatory adjustments based on detected patterns."""
-#         # base regulation on pattern strengths
-#         oscillation = patterns.get('oscillation', 0.0)
-#         convergence = patterns.get('convergence', 0.0)
-#         divergence = patterns.get('divergence', 0.0)
-        
-#         # calculate suggested adjustments
-#         dispersal_adj = -0.2 * oscillation + 0.1 * convergence - 0.1 * divergence
-#         intensity_adj = -0.1 * oscillation - 0.2 * divergence + 0.1 * convergence
-#         complexity_adj = 0.1 * convergence - 0.1 * oscillation - 0.1 * divergence
-        
-#         return (dispersal_adj, intensity_adj, complexity_adj)
+    def _get_state_response(self, input_text: str, state: SystemState) -> str:
+        """Map system states to response patterns."""
+        response_map = {
+            SystemState.SETTLING: lambda: self.settling_response(),
+            SystemState.EXPANDING: lambda: self.apply_timing("What else is present?"),
+            SystemState.CONTAINING: lambda: self.apply_timing(
+                self.containing_patterns[self.environment.depth_level -1].format(
+                    " ".join(input_text.split()[:5]) + "..."
+                )
+            ),
+            SystemState.DWELLING: lambda: self.apply_timing("staying with what's present"),
+            SystemState.EMERGING: lambda: self.apply_timing("What question begins to form?")
+        }
+        return response_map.get(state, lambda: self.settling_response())()
 
-#     def regulate_variety(self, variety: Variety) -> SystemState:
-#         """Determine appropriate state based on variety measures."""
-#         # update conversational history
-#         self.environment.history.append(
-#             (variety.dispersal + variety.intensity + variety.complexity) / 3
-#         )
-#         if len(self.environment.history) > 5:
-#             self.environment.history.pop(0)
+class VarietyRegulator:
+    def regulate_variety(self, variety: Variety, environment: Environment) -> SystemState:
+        """Regulate variety."""
+        total_variety = (variety.dispersal + variety.intensity + variety.complexity) / 3.0
+        momentum = self._calculate_momentum(environment.history)
 
-#         # calculate momentum (rate of change in variety)
-#         self.environment.momentum = self._calculate_momentum()
+        if environment.persistence > 3 and momentum < 0.1:
+            return SystemState.EXPANDING
+        elif variety.dispersal > 0.7:
+            return SystemState.DWELLING
+        elif variety.complexity > 0.7:
+            return SystemState.CONTAINING
+        elif variety.complexity < 0.2:
+            return SystemState.SETTLING
+        else:
+            return SystemState.EMERGING
 
-#         # determine persistence in the current state
-#         if self.environment.state == self.regulate_variety(variety):
-#             self.environment.persistence += 1
-#         else:
-#             self.environment.persistence = 0
+    def _calculate_momentum(self) -> float:
+        """Calculate the rate of change in overall variety."""
+        if len(self.environment.history) > 1:
+            return (self.environment.history[-1] - self.environment.history[-2]) / 2
+        else:
+            return 0.0
 
-#         # use variety, momentum, and persistence to determine new state
-#         if self.environment.persistence > 3 and self.environment.momentum < 0.1:
-#             return SystemState.CONTAINING
-#         elif variety.dispersal > 0.7:
-#             return SystemState.DWELLING
-#         elif variety.complexity > 0.7:
-#             return SystemState.CONTAINING
-#         elif variety.complexity < 0.2:
-#             return SystemState.EXPANDING
-#         else:
-#             return SystemState.EMERGING
-
-#     def _calculate_momentum(self) -> float:
-#         """Calculate the rate of change in overall variety."""
-#         if len(self.environment.history) > 1:
-#             return (self.environment.history[-1] - self.environment.history[-2]) / 2
-#         else:
-#             return 0.0
-
-#     def generate_response(self, input_text: str) -> str:
-#         """Generate response based on input and current environment."""
-#         # assess and regulate variety
-#         variety = self.assess_variety(input_text)
-#         new_state = self.regulate_variety(variety)
-        
-#         # update environment
-#         self.environment.variety = variety
-#         self.environment.state = new_state
-        
-#         # select response pattern based on state
-#         if new_state == SystemState.CONTAINING:
-#             response = self.containing_response(input_text)
-#         elif new_state == SystemState.EXPANDING:
-#             response = self.expanding_response()
-#         elif new_state == SystemState.DWELLING:
-#             response = self.dwelling_response(input_text)
-#         elif new_state == SystemState.EMERGING:
-#             response = self.emerging_response()
-#         else:  # SETTLING
-#             response = self.settling_response()
-            
-#         self.environment.last_response = response
-#         return response
-
-#     def apply_timing(self, text: str) -> str:
-#         """Apply timing pattern to response."""
-#         return f"{text}\n{self.pause_patterns[self.environment.pause_level - 1]}"
+    def apply_depth(self, text: str) -> str:
+        """Apply spatial/depth pattern to response."""
+        return self.depth_patterns[self.environment.depth_level - 1].format(text)
     
-#     def apply_depth(self, text: str) -> str:
-#         """Apply spatial/depth pattern to response."""
-#         return self.depth_patterns[self.environment.depth_level - 1].format(text)
-    
-#     def containing_response(self, input_text: str) -> str:
-#         """Generate containing response for high variety."""
-#         # extract key phrases for reflection
-#         words = input_text.split()
-#         if len(words) > 5:
-#             key_phrase = " ".join(words[:5]) + "..."
-#         else:
-#             key_phrase = input_text
+    def containing_response(self, input_text: str) -> str:
+        """Generate containing response for high variety."""
+        # extract key phrases for reflection
+        words = input_text.split()
+        if len(words) > 5:
+            key_phrase = " ".join(words[:5]) + "..."
+        else:
+            key_phrase = input_text
 
-#         response = self.containing_patterns[self.environment.depth_level - 1].format(key_phrase)
-#         return self.apply_timing(response)
+        response = self.containing_patterns[self.environment.depth_level - 1].format(key_phrase)
+        return self.apply_timing(response)
     
-#     def expanding_response(self) -> str:
-#         """Generate response to encourage expansion."""
-#         prompts = [
-#             "What else is present?",
-#             "Where else does your attention move?",
-#             "What other aspects feel alive?",
-#             "What remains unspoken?",
-#             "What other threads emerge?"
-#         ]
-#         return self.apply_timing(prompts[self.environment.depth_level - 1])
+    def expanding_response(self) -> str:
+        """Generate response to encourage expansion."""
+        prompts = [
+            "What else is present?",
+            "Where else does your attention move?",
+            "What other aspects feel alive?",
+            "What remains unspoken?",
+            "What other threads emerge?"
+        ]
+        return self.apply_timing(prompts[self.environment.depth_level - 1])
 
-#     def dwelling_response(self, input_text: str) -> str:
-#         """Generate response for dwelling with content."""
-#         words = input_text.split()
-#         if words:
-#             focus_word = words[len(words)//2]  # choose middle word as focus
-#             return self.apply_timing(self.apply_depth(f"staying with: {focus_word}"))
-#         return self.apply_timing("staying with what's present")
+    def dwelling_response(self, input_text: str) -> str:
+        """Generate response for dwelling with content."""
+        words = input_text.split()
+        if words:
+            focus_word = words[len(words)//2]  # choose middle word as focus
+            return self.apply_timing(self.apply_depth(f"staying with: {focus_word}"))
+        return self.apply_timing("staying with what's present")
 
-#     def emerging_response(self) -> str:
-#         """Generate response for query emergence."""
-#         prompts = [
-#             "What question begins to form?",
-#             "How might this question want to be asked?",
-#             "What shape does this query take?",
-#             "How does this question hold your situation?",
-#             "What query emerges from this exploration?"
-#         ]
-#         return self.apply_timing(prompts[self.environment.depth_level - 1])
-    
-#     def settling_response(self) -> str:
-#         """Generate initial settling response."""
-#         return self.apply_timing("Take a moment to settle into this space")
+    def emerging_response(self) -> str:
+        """Generate response for query emergence."""
+        prompts = [
+            "What question begins to form?",
+            "How might this question want to be asked?",
+            "What shape does this query take?",
+            "How does this question hold your situation?",
+            "What query emerges from this exploration?"
+        ]
+        return self.apply_timing(prompts[self.environment.depth_level - 1])
+
+class CLISession:
+    def __init__(self, homeostat: QueryHomeostat):
+        self.homeostat = homeostat
+        self.rhythm = DialogueRhythm()
+        self.state = SessionState.ACTIVE
+        self._last_input_time: Optional[float] = None
+
+class HomeostatError(Exception):
+    """Base exception class for Query Homeostat errors."""
+    pass
+
+class VarietyAssessmentError(HomeostatError):
+    """Error in variety assessment"""
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message)
+        self.details = details or {}
+
+class StateTransitionError(HomeostatError):
+    """Error in state transitions"""
+    pass
 
 def demonstrate_usage():
     """Demonstrate system usage with example interaction."""

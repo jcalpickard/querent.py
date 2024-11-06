@@ -504,7 +504,7 @@ class ObjectGathering:
             self.gathered_objects[name] = obj
             gathered.append(obj)
             
-            # Brief pause for rhythm
+            # Brief pause
             time.sleep(0.5)
 
         return gathered
@@ -512,9 +512,9 @@ class ObjectGathering:
     def _get_category_description(self, category: ObjectCategory) -> str:
         """Get human-readable category descriptions"""
         descriptions = {
-            ObjectCategory.PERSONAL: "Personal Objects",
-            ObjectCategory.EPHEMERAL: "Temporary Features",
-            ObjectCategory.PERSISTENT: "Permanent Elements"
+            ObjectCategory.PERSONAL: "Personal objects",
+            ObjectCategory.EPHEMERAL: "Temporary features",
+            ObjectCategory.PERSISTENT: "Permanent elements"
         }
         return descriptions[category]
 

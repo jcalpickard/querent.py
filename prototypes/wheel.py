@@ -2,7 +2,6 @@ import typer
 from datetime import datetime, timedelta
 from enum import Enum
 import random
-import math
 
 app = typer.Typer()
 

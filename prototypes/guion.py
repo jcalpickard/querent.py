@@ -1,5 +1,5 @@
 import typer
-from dataclass import dataclass
+from dataclasses import dataclass
 
 @dataclass
 class Card:
@@ -14,7 +14,7 @@ class Card:
 
 @dataclass
 class Session:
-   """Everything we want to save in humus the session"""
+    """Everything we want to save in humus the session"""
     query : str
     result : [Card]
     interpretations : [str]
@@ -22,13 +22,13 @@ class Session:
 class QueryHomeostat:
     """A thing that's responsible for the 'query refinement' process -
     deciding if a query is sufficiently 'refined' and producing prompts for further elicitation"""
-    def is_balanced(query : str) -> bool:
+    def is_stable(self, queries : [str]) -> bool:
         """Evalute if the query is 'good enough' to proceed:"""
-        return ???
+        pass
 
-    def prompt_for_refinement(query) -> str:
-        """Get a prompt to give to the user to refine the query"""
-        return ???
+    def prompt_for_refinement(self, queries : [str]) -> str:
+        """Get a prompt to give to the user to refine the query"""  # or "regulate variety"
+        pass
 
 
 class QuerentHumusClient:
@@ -48,31 +48,45 @@ def welcome_scene():
 def homeostat_scene():
     """Here we do the 'query elicitation' and refinement"""
     homeostat = QueryHomeostat()
-    query = ??? #get the initial formulation of the query from the user.
-    while !homeostat.is_balanced(query):
-        prompt = homeostat.prompt_for_refinement(query)
-        ??? ### Show prompt to user
-        query = ??? #Get reformulated query back from user
-    return query
+    queries = []
+    #queries.append(???) #get the initial formulation of the query from the user.
+    while not homeostat.is_stable(queries):
+        prompt = homeostat.prompt_for_refinement(queries)
+        #??? ### Show prompt to user
+        #queries.append(???) #Get reformulated query back from user
+    # TODO: The user explicitly consents to continue with the current formulation.
+    # What happens if they say no? (Start from scratch? continue refining? Edit?)
+    return queries[-1]
 
 
 def draw_scene(query):
     """Here we guide the user in drawing cards, and receive their responses"""
-    card1 = ???
-    card2 = ???
-    card3 = ???
-    return [card1, card2, card3]
+    #card1 = ???
+    #card2 = ???
+    #card3 = ???
+    #return [card1, card2, card3]
+    pass
 
 def interpretation_scene(query, result, previous_interpretations):
     """Here we take the user through the process of interpretation of the reading,
     with reference to their query, and to relevant previous interpretations"""
-    interpretation = ???
-    return interpretation
+    #interpretation = ???
+    #return interpretation
+    pass
 
 def farewell_scene():
     """Here we transition out of the querent session, giving the user time to reflect and say goodbye"""
+    pass
 
 app = typer.Typer()
+
+
+#def run():
+#    welcome
+#    homeostat
+#    draw
+#    interpret
+#    farewell
 
 @app.command()
 def run():
@@ -80,7 +94,7 @@ def run():
     query = homeostat_scene()
     result = draw_scene(query)
     humus = QuerentHumusClient()
-    previous_interpretaions = []
+    previous_interpretations = []
     for card in result:
         previous_interpretations[card] = humus.get_existing_interpretations(query, card)
     interpretation = interpretation_scene(query, result, previous_interpretations)

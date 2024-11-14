@@ -25,7 +25,7 @@ class Threshold(Enum):
 
 @dataclass
 class ThresholdMoment:
-    """A record of tranisition"""
+    """A record of transition"""
     threshold: Threshold
     # some other qualities
     timestamp: datetime = datetime.now()

@@ -167,7 +167,6 @@ def homeostat_scene():
     # What happens if they say no? (Start from scratch? continue refining? Edit?)
     return queries[-1]
 
-
 def draw_scene(query):
     """Here we guide the user in drawing cards, and receive their responses"""
     # TODO guide the user to read and input cards, and return the real ones.
